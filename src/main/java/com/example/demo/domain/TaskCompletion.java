@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "task_completions",
@@ -24,10 +24,10 @@ public class TaskCompletion extends BaseTimeEntity {
     private Task task;
 
     @Column(nullable = false)
-    private LocalDateTime completionDate;
+    private LocalDate completionDate;
 
     @Builder
-    public TaskCompletion(Task task, LocalDateTime completionDate) {
+    public TaskCompletion(Task task, LocalDate completionDate) {
         this.task = task;
         this.completionDate = completionDate;
     }
