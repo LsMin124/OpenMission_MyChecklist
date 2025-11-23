@@ -4,6 +4,7 @@ import com.example.demo.domain.Task;
 import com.example.demo.domain.TaskCompletion;
 import com.example.demo.domain.TaskType;
 import com.example.demo.domain.User;
+import com.example.demo.dto.TaskRequest;
 import com.example.demo.dto.TaskResponse;
 import com.example.demo.repository.TaskCompletionRepository;
 import com.example.demo.repository.TaskRepository;
@@ -28,19 +29,13 @@ public class TaskService {
 
     // task 생성
     @Transactional
-    public Long createTask(Long userId, String title, String description, TaskType type, LocalDate duedate, String recurrenceRule) {
+    public Long createTask(Long userId, TaskRequest request) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Task task = Task.builder()
-                .user(user)
-                .title(title)
-                .description(description)
-                .taskType(type)
-                .dueDate(duedate)
-                .recurrenceRule(recurrenceRule)
-                .build();
+        // dto 사용
+        Task task = request.toEntity(user);
 
         return taskRepository.save(task).getId();
     }
