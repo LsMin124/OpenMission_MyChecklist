@@ -3,6 +3,8 @@ package com.example.demo.controller;
 import com.example.demo.config.JwtTokenProvider;
 import com.example.demo.domain.User;
 import com.example.demo.dto.AuthDto;
+import com.example.demo.exception.CustomException;
+import com.example.demo.exception.ErrorCode;
 import com.example.demo.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +30,7 @@ public class AuthController {
     public ResponseEntity<String> signup(@RequestBody @Valid AuthDto.SignupRequest request) {
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.badRequest().body("Email already exists");
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
 
         User user = User.builder()
@@ -45,11 +47,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthDto.TokenResponse> login(@RequestBody @Valid AuthDto.LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Unregistered email"));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // 비밀번호 체크
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("Wrong password");
+            throw new CustomException(ErrorCode.INVALID_PASSWORD);
         }
 
         // 토큰 발급

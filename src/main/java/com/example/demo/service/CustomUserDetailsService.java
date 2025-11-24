@@ -1,6 +1,8 @@
 package com.example.demo.service;
 
 import com.example.demo.domain.User;
+import com.example.demo.exception.CustomException;
+import com.example.demo.exception.ErrorCode;
 import com.example.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -20,7 +22,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("user not found: " + email));
+                .orElseThrow(() -> new UsernameNotFoundException(ErrorCode.USER_NOT_FOUND.getMessage()));
 
         return createUserDetails(user);
     }
@@ -28,7 +30,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     // Id로 찾아서 토큰 인증
     public UserDetails loadUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new UsernameNotFoundException("user not found: " + id));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         return createUserDetails(user);
     }

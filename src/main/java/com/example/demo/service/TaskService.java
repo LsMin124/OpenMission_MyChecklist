@@ -6,6 +6,8 @@ import com.example.demo.domain.TaskType;
 import com.example.demo.domain.User;
 import com.example.demo.dto.TaskRequest;
 import com.example.demo.dto.TaskResponse;
+import com.example.demo.exception.CustomException;
+import com.example.demo.exception.ErrorCode;
 import com.example.demo.repository.TaskCompletionRepository;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
@@ -32,7 +34,7 @@ public class TaskService {
     public Long createTask(Long userId, TaskRequest request) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         // dto 사용
         Task task = request.toEntity(user);
@@ -43,7 +45,7 @@ public class TaskService {
     // task 목록 조회
     public Map<String, List<TaskResponse>> getTaskSchedule(Long userId, LocalDate date) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         List<Task> allTasks = taskRepository.findAllByUser(user);
 
@@ -144,11 +146,10 @@ public class TaskService {
     public void completeTask(Long userId, Long taskId, LocalDate date) {
 
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalArgumentException("Task not found"));
+                .orElseThrow(() -> new CustomException(ErrorCode.TASK_NOT_FOUND));
 
-        // 본인 확인 - 나중에 security 적용?
         if (!task.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("no authority");
+            throw new CustomException(ErrorCode.TASK_ACCESS_DENIED);
         }
 
         if (taskCompletionRepository.existsByTaskAndCompletionDate(task, date)) {
@@ -169,10 +170,10 @@ public class TaskService {
     @Transactional
     public void cancelTaskCompletion(Long userId, Long taskId, LocalDate date) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalArgumentException("작업을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         if (!task.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("권한이 없습니다.");
+            throw new CustomException(ErrorCode.TASK_ACCESS_DENIED);
         }
 
         // 완료 기록을 찾아서 삭제
@@ -184,10 +185,10 @@ public class TaskService {
     @Transactional
     public void deleteTask(Long userId, Long taskId) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new IllegalArgumentException("작업을 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.TASK_NOT_FOUND));
 
         if (!task.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("권한이 없습니다.");
+            throw new CustomException(ErrorCode.TASK_ACCESS_DENIED);
         }
 
         // 1. 연관된 완료 기록들 먼저 싹 삭제 (참조 무결성 유지)
