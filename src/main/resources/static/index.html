@@ -10,30 +10,42 @@
         h2 { text-align: center; color: #1f2937; margin-bottom: 1.5rem; font-weight: 800; }
         h3 { font-size: 1rem; color: #4b5563; margin: 20px 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
         .badge { background-color: #e0e7ff; color: #4f46e5; font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; }
+
+        /* Form Styles */
         input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
         button { background-color: #6366f1; color: white; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
         button:hover { background-color: #4f46e5; }
+
+        /* Button Variants */
         .logout-btn { width: auto; padding: 4px 10px; font-size: 0.75rem; background-color: #9ca3af; }
         .delete-btn { width: auto; padding: 4px 8px; background: transparent; color: #ef4444; border: none; font-size: 1.1rem; cursor: pointer; margin-right: 5px; }
+        .link-btn { background: none; color: #6366f1; border: none; cursor: pointer; font-size: 0.9rem; text-decoration: underline; display: inline; width: auto; padding: 0; margin: 0; }
+
+        /* Utilities */
         .hidden { display: none !important; }
         .error-msg { color: #ef4444; font-size: 0.85rem; text-align: center; margin-bottom: 1rem; }
+
+        /* Task Item */
         .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 8px; border-bottom: 1px solid #f3f4f6; transition: 0.2s; }
         .task-item:hover { background-color: #f9fafb; }
         .task-item.completed .task-title { text-decoration: line-through; color: #9ca3af; }
+
         .task-content { display: flex; flex-direction: column; gap: 2px; }
         .task-title { font-weight: 500; color: #1f2937; }
         .task-meta { font-size: 0.75rem; color: #6b7280; display: flex; align-items: center; gap: 5px; }
+
+        /* Tags */
         .tag { padding: 2px 6px; border-radius: 4px; font-weight: 600; background-color: #f3f4f6; color: #6b7280; }
         .tag.d-day { background-color: #fee2e2; color: #ef4444; }
         .tag.future { background-color: #ecfccb; color: #4d7c0f; }
         .tag.recurring { background-color: #dbeafe; color: #2563eb; }
+
         .task-controls { display: flex; align-items: center; }
         .checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #6366f1; margin: 0; }
 
-        /* 입력 폼 동적 레이아웃 */
+        /* Input Group */
         .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
         .input-row select, .input-row input { margin-bottom: 0; }
-        #option-input { flex: 0.6; } /* 옵션 입력창 너비 조절 */
     </style>
 </head>
 <body>
@@ -45,19 +57,19 @@
     <div id="login-error" class="error-msg"></div>
     <button onclick="login()">로그인</button>
     <div style="text-align: center; margin-top: 10px;">
-        <span onclick="toggleAuthMode('signup')" style="cursor:pointer; color:#6366f1; font-size:0.9rem; text-decoration:underline;">계정이 없으신가요?</span>
+        <span class="link-btn" onclick="toggleAuthMode('signup')">계정이 없으신가요? 회원가입</span>
     </div>
 </div>
 
 <div class="container hidden" id="signup-section">
     <h2>✨ 회원가입</h2>
-    <input type="email" id="signup-email" placeholder="이메일">
+    <input type="email" id="signup-email" placeholder="이메일 (예: user@test.com)">
     <input type="password" id="signup-password" placeholder="비밀번호">
     <input type="text" id="signup-nickname" placeholder="닉네임">
     <div id="signup-error" class="error-msg"></div>
     <button onclick="signup()">가입하기</button>
     <div style="text-align: center; margin-top: 10px;">
-        <span onclick="toggleAuthMode('login')" style="cursor:pointer; color:#6366f1; font-size:0.9rem; text-decoration:underline;">로그인 하러가기</span>
+        <span class="link-btn" onclick="toggleAuthMode('login')">이미 계정이 있으신가요? 로그인</span>
     </div>
 </div>
 
@@ -79,7 +91,7 @@
             </select>
 
             <input type="date" id="date-input" class="hidden" style="flex: 1.5;">
-            <input type="number" id="number-input" class="hidden" placeholder="일(Day)" min="1" max="31" style="flex: 0.8;">
+            <input type="number" id="number-input" class="hidden" placeholder="값" min="1" max="31" style="flex: 0.8;">
 
             <button onclick="addTask()" style="width: 60px; margin-bottom: 0;">추가</button>
         </div>
@@ -94,11 +106,13 @@
 </div>
 
 <script>
+    // ✅ API 경로 상수
     const AUTH_API = '/api/auth';
     const TASK_API = 'todo/tasks';
 
     let token = localStorage.getItem('accessToken');
 
+    // 초기 실행
     if (token) {
         showApp();
     } else {
@@ -106,6 +120,7 @@
         updateInputUI();
     }
 
+    // --- 화면 제어 ---
     function toggleAuthMode(mode) {
         const loginSec = document.getElementById('login-section');
         const signupSec = document.getElementById('signup-section');
@@ -121,7 +136,6 @@
         }
     }
 
-    // ✅ [UI] 선택한 반복 타입에 따라 입력창 모양 바꾸기
     function updateInputUI() {
         const type = document.getElementById('recurrence-type').value;
         const dateInput = document.getElementById('date-input');
@@ -141,45 +155,72 @@
             hint.innerText = "예: 3 입력 시 3일마다 반복";
         } else if (type === 'MONTHLY') {
             numberInput.classList.remove('hidden');
-            numberInput.placeholder = "날짜 (1~31)";
-            numberInput.value = new Date().getDate(); // 기본값 오늘 날짜
+            numberInput.placeholder = "일 (1~31)";
+            numberInput.value = new Date().getDate();
             hint.innerText = "매월 해당 날짜에 반복";
         } else if (type === 'DAILY') {
             hint.innerText = "매일매일 반복됩니다";
         }
     }
 
-    async function signup() { /* ...기존 코드... */
+    // --- Auth ---
+    async function signup() {
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const nickname = document.getElementById('signup-nickname').value;
+
         try {
             const res = await fetch(`${AUTH_API}/signup`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, nickname })
             });
-            if (res.ok) { alert("가입 성공!"); toggleAuthMode('login'); document.getElementById('login-email').value = email; }
-            else { document.getElementById('signup-error').innerText = "가입 실패"; }
-        } catch (e) {}
+
+            // 백엔드 리팩토링으로 ApiResponse가 옴. res.ok가 true면 성공.
+            if (res.ok) {
+                alert("가입 성공! 로그인 해주세요.");
+                toggleAuthMode('login');
+                document.getElementById('login-email').value = email;
+            } else {
+                // 실패 시 message 꺼내기
+                const json = await res.json();
+                document.getElementById('signup-error').innerText = json.message || "가입 실패";
+            }
+        } catch (e) {
+            document.getElementById('signup-error').innerText = "서버 연결 오류";
+        }
     }
 
     async function login() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
+
         try {
             const res = await fetch(`${AUTH_API}/login`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
-            if (!res.ok) throw new Error();
-            const data = await res.json();
-            token = data.accessToken;
+
+            const json = await res.json(); // ApiResponse 객체 받기
+
+            if (!res.ok) {
+                throw new Error(json.message || '로그인 실패');
+            }
+
+            // ✅ [수정] ApiResponse 구조: json.data.accessToken
+            token = json.data.accessToken;
             localStorage.setItem('accessToken', token);
             showApp();
-        } catch (e) { document.getElementById('login-error').innerText = "로그인 실패"; }
+        } catch (e) {
+            document.getElementById('login-error').innerText = e.message;
+        }
     }
 
-    function logout() { localStorage.removeItem('accessToken'); location.reload(); }
+    function logout() {
+        localStorage.removeItem('accessToken');
+        location.reload();
+    }
 
     function showApp() {
         document.getElementById('login-section').classList.add('hidden');
@@ -189,13 +230,21 @@
         loadTasks();
     }
 
+    // --- Task ---
     async function loadTasks() {
-        const res = await fetch(`${TASK_API}/today`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${TASK_API}/today`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
         if (res.status === 403 || res.status === 401) { logout(); return; }
-        const data = await res.json();
+
+        const response = await res.json(); // ApiResponse
+        // ✅ [수정] 실제 데이터는 response.data 안에 있음
+        const data = response.data;
 
         renderList('today-list', data.today, true);
         document.getElementById('today-count').innerText = data.today.length;
+
         renderList('upcoming-list', data.upcoming, false);
         document.getElementById('upcoming-count').innerText = data.upcoming.length;
     }
@@ -203,7 +252,8 @@
     function renderList(elementId, tasks, isToday) {
         const list = document.getElementById(elementId);
         list.innerHTML = '';
-        if (tasks.length === 0) {
+
+        if (!tasks || tasks.length === 0) {
             list.innerHTML = '<div style="text-align:center; color:#9ca3af; padding:15px; font-size:0.9rem;">없음</div>';
             return;
         }
@@ -212,14 +262,12 @@
             const div = document.createElement('div');
             div.className = `task-item ${task.completed ? 'completed' : ''}`;
 
-            // 태그 표시 로직
             let metaHtml = '';
             if (task.taskType === 'RECURRING') {
                 let ruleText = "반복";
                 if (task.recurrenceRule === 'DAILY') ruleText = "매일";
-                else if (task.recurrenceRule.startsWith('EVERY_N_DAYS')) ruleText = `${task.recurrenceRule.split(':')[1]}일 마다`;
+                else if (task.recurrenceRule.startsWith('EVERY_N_DAYS')) ruleText = `${task.recurrenceRule.split(':')[1]}일 간격`;
                 else if (task.recurrenceRule.startsWith('MONTHLY')) ruleText = `매월 ${task.recurrenceRule.split(':')[1]}일`;
-
                 metaHtml = `<span class="tag recurring">🔄 ${ruleText}</span>`;
             } else {
                 const dateClass = isToday ? 'tag d-day' : 'tag future';
@@ -234,14 +282,18 @@
                 </div>
                 <div class="task-controls">
                     <button class="delete-btn" onclick="deleteTask(${task.id})">❌</button>
-                    ${isToday ? `<input type="checkbox" class="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, this.checked)">` : ''}
+
+                    ${isToday ? `
+                    <input type="checkbox" class="checkbox"
+                        ${task.completed ? 'checked' : ''}
+                        onchange="toggleTask(${task.id}, this.checked)">
+                    ` : ''}
                 </div>
             `;
             list.appendChild(div);
         });
     }
 
-    // ✅ [로직] 입력값 파싱하여 백엔드로 전송
     async function addTask() {
         const title = document.getElementById('task-title').value;
         const typeSelection = document.getElementById('recurrence-type').value;
@@ -263,10 +315,10 @@
             if (typeSelection === 'DAILY') {
                 recurrenceRule = "DAILY";
             } else if (typeSelection === 'EVERY_N_DAYS') {
-                if (!numberVal) return alert("간격(일)을 입력하세요");
+                if (!numberVal) return alert("간격을 입력하세요");
                 recurrenceRule = `EVERY_N_DAYS:${numberVal}`;
             } else if (typeSelection === 'MONTHLY') {
-                if (!numberVal || numberVal < 1 || numberVal > 31) return alert("올바른 날짜(1~31)를 입력하세요");
+                if (!numberVal || numberVal < 1 || numberVal > 31) return alert("날짜(1~31)를 입력하세요");
                 recurrenceRule = `MONTHLY:${numberVal}`;
             }
         }
@@ -281,19 +333,26 @@
             document.getElementById('task-title').value = '';
             loadTasks();
         } else {
-            alert("추가 실패");
+            const json = await res.json();
+            alert(json.message || "추가 실패");
         }
     }
 
     async function toggleTask(taskId, isChecked) {
         const method = isChecked ? 'POST' : 'DELETE';
-        await fetch(`${TASK_API}/${taskId}/complete`, { method, headers: { 'Authorization': `Bearer ${token}` } });
+        await fetch(`${TASK_API}/${taskId}/complete`, {
+            method: method,
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         loadTasks();
     }
 
     async function deleteTask(taskId) {
         if (!confirm("삭제하시겠습니까?")) return;
-        await fetch(`${TASK_API}/${taskId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        await fetch(`${TASK_API}/${taskId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         loadTasks();
     }
 </script>

@@ -16,7 +16,7 @@ public enum SuccessCode {
 
     // 201 Created
     CREATE_SUCCESS(HttpStatus.CREATED, "생성 성공"),
-    signup_SUCCESS(HttpStatus.CREATED, "회원가입 성공");
+    SIGNUP_SUCCESS(HttpStatus.CREATED, "회원가입 성공");
 
     private final HttpStatus httpStatus;
     private final String message;

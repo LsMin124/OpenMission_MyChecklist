@@ -2,13 +2,14 @@ package com.example.demo.controller;
 
 import com.example.demo.config.JwtTokenProvider;
 import com.example.demo.domain.User;
+import com.example.demo.dto.ApiResponse;
 import com.example.demo.dto.AuthDto;
 import com.example.demo.exception.CustomException;
 import com.example.demo.exception.ErrorCode;
+import com.example.demo.exception.SuccessCode;
 import com.example.demo.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,7 +28,7 @@ public class AuthController {
 
     // 회원가입
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody @Valid AuthDto.SignupRequest request) {
+    public ResponseEntity<ApiResponse<String>> signup(@RequestBody @Valid AuthDto.SignupRequest request) {
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
@@ -40,12 +41,12 @@ public class AuthController {
                 .build();
 
         userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body("User registered successfully");
+        return ApiResponse.success(SuccessCode.SIGNUP_SUCCESS);
     }
 
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<AuthDto.TokenResponse> login(@RequestBody @Valid AuthDto.LoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthDto.TokenResponse>> login(@RequestBody @Valid AuthDto.LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -56,6 +57,6 @@ public class AuthController {
 
         // 토큰 발급
         String token = jwtTokenProvider.createToken(user.getId());
-        return ResponseEntity.ok(new AuthDto.TokenResponse(token));
+        return ApiResponse.success(SuccessCode.LOGIN_SUCCESS, new AuthDto.TokenResponse(token));
     }
 }
