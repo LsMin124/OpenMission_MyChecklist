@@ -42,7 +42,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // 1. 메인 화면, 로그인 관련은 통과
-                        .requestMatchers("/", "/testpage.html", "/api/auth/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/api/auth/**").permitAll()
                         // 2. 나머지는 인증 필요
                         .anyRequest().authenticated()
                 )
