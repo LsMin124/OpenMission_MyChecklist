@@ -48,7 +48,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/",
-                                "/index.html").permitAll() // 메인페이지 접근 허용
+                                "/testpage.html").permitAll() // 메인페이지 접근 허용
                         .requestMatchers(
                                 "/api/auth/**" // 로그인 및 회원가입 api 접근 허용
                         ).permitAll()
