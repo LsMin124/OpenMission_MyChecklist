@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/todo/tasks")
@@ -35,18 +36,17 @@ public class TaskController {
 
     // 오늘 task 목록 조회
     @GetMapping("/today")
-    public ResponseEntity<List<TaskResponse>> getTasksForToday(
+    public ResponseEntity<Map<String, List<TaskResponse>>> getTasksForToday(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) LocalDate date) {
 
         Long userId = Long.parseLong(userDetails.getUsername());
+        if (date == null) date = LocalDate.now();
 
-        if (date == null) {
-            date = LocalDate.now();
-        }
+        // Service 메서드 이름 변경에 맞춰 호출
+        Map<String, List<TaskResponse>> schedule = taskService.getTaskSchedule(userId, date);
 
-        List<TaskResponse> responses = taskService.getTasksForToday(userId, date);
-        return ResponseEntity.ok(responses);
+        return ResponseEntity.ok(schedule);
     }
 
     // 작업 완료 처리

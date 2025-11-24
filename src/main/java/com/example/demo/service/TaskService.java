@@ -14,8 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,25 +39,58 @@ public class TaskService {
         return taskRepository.save(task).getId();
     }
 
-    // 오늘 task 목록 조회
-    public List<TaskResponse> getTasksForToday(Long userId, LocalDate date) {
+    // task 목록 조회
+    public Map<String, List<TaskResponse>> getTaskSchedule(Long userId, LocalDate date) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        // user의 모든 task 조회
         List<Task> allTasks = taskRepository.findAllByUser(user);
 
-        // 오늘 날짜로 된 완료기록 한번에 조회 - set으로 조회속도 최적화
+        // 오늘 완료된 기록 조회
         List<TaskCompletion> completions = taskCompletionRepository.findByTaskUserAndCompletionDate(user, date);
-        Set<Long> competedTaskIds = completions.stream()
+        Set<Long> completedTaskIds = completions.stream()
                 .map(tc -> tc.getTask().getId())
                 .collect(Collectors.toSet());
 
-        // 필터링 및 dto로 변환
-        return allTasks.stream()
-                .filter(task -> shouldShowTaskOnDate(task, date, competedTaskIds))
-                .map(task -> TaskResponse.from(task, competedTaskIds.contains(task.getId())))
-                .collect(Collectors.toList());
+        List<TaskResponse> todayList = new ArrayList<>();
+        List<TaskResponse> upcomingList = new ArrayList<>();
+
+        for (Task task : allTasks) {
+            // 1. 반복(RECURRING) 작업: 오늘 해당되면 'Today'에 추가
+            if (task.getTaskType() == TaskType.RECURRING) {
+                if ("DAILY".equals(task.getRecurrenceRule())) {
+                    todayList.add(TaskResponse.from(task, completedTaskIds.contains(task.getId())));
+                }
+            }
+            // 2. 일회성(ONE_TIME) 작업
+            else if (task.getTaskType() == TaskType.ONE_TIME) {
+                LocalDate due = task.getDueDate();
+                boolean isCompletedToday = completedTaskIds.contains(task.getId());
+
+                // A. 마감일이 오늘이거나, 과거인데 아직 안 한 경우 -> 'Today' (잔소리 모드)
+                if ((due.isEqual(date) || due.isBefore(date)) && !isCompletedToday) {
+                    todayList.add(TaskResponse.from(task, false));
+                }
+                // B. 마감일이 오늘인데 이미 완료한 경우 -> 'Today' (성취감용)
+                else if (due.isEqual(date) && isCompletedToday) {
+                    todayList.add(TaskResponse.from(task, true));
+                }
+                // C. 마감일이 미래인 경우 -> 'Upcoming' (미래 준비)
+                else if (due.isAfter(date)) {
+                    // 미래 일감은 완료 여부가 의미 없으므로 false, 날짜순 정렬을 위해 나중에 처리
+                    upcomingList.add(TaskResponse.from(task, false));
+                }
+            }
+        }
+
+        // Upcoming 리스트는 마감일 임박순으로 정렬
+        upcomingList.sort((t1, t2) -> t1.getDueDate().compareTo(t2.getDueDate()));
+
+        Map<String, List<TaskResponse>> result = new HashMap<>();
+        result.put("today", todayList);
+        result.put("upcoming", upcomingList);
+
+        return result;
     }
 
     // 해당 날짜에 해당 task의 노출여부 결정 로직
