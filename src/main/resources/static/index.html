@@ -8,42 +8,32 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; padding-top: 40px; margin: 0; padding-bottom: 40px; }
         .container { width: 100%; max-width: 420px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #1f2937; margin-bottom: 1.5rem; font-weight: 800; }
-
-        /* 섹션 헤더 스타일 */
         h3 { font-size: 1rem; color: #4b5563; margin: 20px 0 10px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
         .badge { background-color: #e0e7ff; color: #4f46e5; font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; }
-
         input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
-
         button { background-color: #6366f1; color: white; border: none; cursor: pointer; font-weight: 600; transition: 0.2s; }
         button:hover { background-color: #4f46e5; }
-
-        /* 버튼들 */
         .logout-btn { width: auto; padding: 4px 10px; font-size: 0.75rem; background-color: #9ca3af; }
         .delete-btn { width: auto; padding: 4px 8px; background: transparent; color: #ef4444; border: none; font-size: 1.1rem; cursor: pointer; margin-right: 5px; }
-
         .hidden { display: none !important; }
         .error-msg { color: #ef4444; font-size: 0.85rem; text-align: center; margin-bottom: 1rem; }
-
-        /* 리스트 아이템 */
         .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 8px; border-bottom: 1px solid #f3f4f6; transition: 0.2s; }
         .task-item:hover { background-color: #f9fafb; }
         .task-item.completed .task-title { text-decoration: line-through; color: #9ca3af; }
-
         .task-content { display: flex; flex-direction: column; gap: 2px; }
         .task-title { font-weight: 500; color: #1f2937; }
         .task-meta { font-size: 0.75rem; color: #6b7280; display: flex; align-items: center; gap: 5px; }
         .tag { padding: 2px 6px; border-radius: 4px; font-weight: 600; background-color: #f3f4f6; color: #6b7280; }
-        .tag.d-day { background-color: #fee2e2; color: #ef4444; } /* 오늘 마감/지남 */
-        .tag.future { background-color: #ecfccb; color: #4d7c0f; } /* 미래 */
-
+        .tag.d-day { background-color: #fee2e2; color: #ef4444; }
+        .tag.future { background-color: #ecfccb; color: #4d7c0f; }
+        .tag.recurring { background-color: #dbeafe; color: #2563eb; }
         .task-controls { display: flex; align-items: center; }
         .checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #6366f1; margin: 0; }
 
-        .input-group { display: flex; gap: 8px; }
-        .input-group select { flex: 1; }
-        .input-group input[type="date"] { flex: 1.3; }
-        .input-group button { width: 60px; margin-bottom: 0; }
+        /* 입력 폼 동적 레이아웃 */
+        .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        .input-row select, .input-row input { margin-bottom: 0; }
+        #option-input { flex: 0.6; } /* 옵션 입력창 너비 조절 */
     </style>
 </head>
 <body>
@@ -78,21 +68,28 @@
     </div>
 
     <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <input type="text" id="task-title" placeholder="할 일을 입력하세요..." style="background: white;">
-        <div class="input-group">
-            <select id="task-type" onchange="toggleDateInput()">
-                <option value="RECURRING">🔁 매일</option>
-                <option value="ONE_TIME" selected>📅 날짜</option>
+        <input type="text" id="task-title" placeholder="할 일을 입력하세요..." style="background: white; margin-bottom: 10px;">
+
+        <div class="input-row">
+            <select id="recurrence-type" onchange="updateInputUI()" style="flex: 1.2;">
+                <option value="ONE_TIME">📅 날짜 지정</option>
+                <option value="DAILY">🔄 매일 반복</option>
+                <option value="EVERY_N_DAYS">🔢 N일 간격</option>
+                <option value="MONTHLY">🗓 매월 반복</option>
             </select>
-            <input type="date" id="task-date">
-            <button onclick="addTask()">추가</button>
+
+            <input type="date" id="date-input" class="hidden" style="flex: 1.5;">
+            <input type="number" id="number-input" class="hidden" placeholder="일(Day)" min="1" max="31" style="flex: 0.8;">
+
+            <button onclick="addTask()" style="width: 60px; margin-bottom: 0;">추가</button>
         </div>
+        <div id="input-hint" style="font-size: 0.8rem; color: #666; margin-top: 5px; text-align: right;"></div>
     </div>
 
     <h3>🔥 오늘 할 일 <span id="today-count" class="badge">0</span></h3>
     <div id="today-list"></div>
 
-    <h3>📅 다가오는 일정 <span id="upcoming-count" class="badge">0</span></h3>
+    <h3>🚀 다가오는 일정 <span id="upcoming-count" class="badge">0</span></h3>
     <div id="upcoming-list"></div>
 </div>
 
@@ -105,7 +102,8 @@
     if (token) {
         showApp();
     } else {
-        document.getElementById('task-date').valueAsDate = new Date();
+        document.getElementById('date-input').valueAsDate = new Date();
+        updateInputUI();
     }
 
     function toggleAuthMode(mode) {
@@ -123,46 +121,54 @@
         }
     }
 
-    function toggleDateInput() {
-        const type = document.getElementById('task-type').value;
-        const dateInput = document.getElementById('task-date');
-        if (type === 'RECURRING') {
-            dateInput.classList.add('hidden');
-        } else {
+    // ✅ [UI] 선택한 반복 타입에 따라 입력창 모양 바꾸기
+    function updateInputUI() {
+        const type = document.getElementById('recurrence-type').value;
+        const dateInput = document.getElementById('date-input');
+        const numberInput = document.getElementById('number-input');
+        const hint = document.getElementById('input-hint');
+
+        dateInput.classList.add('hidden');
+        numberInput.classList.add('hidden');
+        hint.innerText = "";
+
+        if (type === 'ONE_TIME') {
             dateInput.classList.remove('hidden');
             if(!dateInput.value) dateInput.valueAsDate = new Date();
+        } else if (type === 'EVERY_N_DAYS') {
+            numberInput.classList.remove('hidden');
+            numberInput.placeholder = "간격 (일)";
+            hint.innerText = "예: 3 입력 시 3일마다 반복";
+        } else if (type === 'MONTHLY') {
+            numberInput.classList.remove('hidden');
+            numberInput.placeholder = "날짜 (1~31)";
+            numberInput.value = new Date().getDate(); // 기본값 오늘 날짜
+            hint.innerText = "매월 해당 날짜에 반복";
+        } else if (type === 'DAILY') {
+            hint.innerText = "매일매일 반복됩니다";
         }
     }
 
-    async function signup() {
+    async function signup() { /* ...기존 코드... */
         const email = document.getElementById('signup-email').value;
         const password = document.getElementById('signup-password').value;
         const nickname = document.getElementById('signup-nickname').value;
-
         try {
             const res = await fetch(`${AUTH_API}/signup`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password, nickname })
             });
-            if (res.ok) {
-                alert("가입 성공!");
-                toggleAuthMode('login');
-                document.getElementById('login-email').value = email;
-            } else {
-                document.getElementById('signup-error').innerText = "가입 실패";
-            }
+            if (res.ok) { alert("가입 성공!"); toggleAuthMode('login'); document.getElementById('login-email').value = email; }
+            else { document.getElementById('signup-error').innerText = "가입 실패"; }
         } catch (e) {}
     }
 
     async function login() {
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
-
         try {
             const res = await fetch(`${AUTH_API}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
             if (!res.ok) throw new Error();
@@ -170,49 +176,33 @@
             token = data.accessToken;
             localStorage.setItem('accessToken', token);
             showApp();
-        } catch (e) {
-            document.getElementById('login-error').innerText = "로그인 실패";
-        }
+        } catch (e) { document.getElementById('login-error').innerText = "로그인 실패"; }
     }
 
-    function logout() {
-        localStorage.removeItem('accessToken');
-        location.reload();
-    }
+    function logout() { localStorage.removeItem('accessToken'); location.reload(); }
 
     function showApp() {
         document.getElementById('login-section').classList.add('hidden');
         document.getElementById('signup-section').classList.add('hidden');
         document.getElementById('app-section').classList.remove('hidden');
-        toggleDateInput();
+        updateInputUI();
         loadTasks();
     }
 
-    // ✅ 메인 데이터 로드 함수 (수정됨)
     async function loadTasks() {
-        const res = await fetch(`${TASK_API}/today`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
+        const res = await fetch(`${TASK_API}/today`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.status === 403 || res.status === 401) { logout(); return; }
-
-        // 서버에서 { today: [], upcoming: [] } 형태로 받음
         const data = await res.json();
 
-        // 오늘 리스트 렌더링
         renderList('today-list', data.today, true);
         document.getElementById('today-count').innerText = data.today.length;
-
-        // 미래 리스트 렌더링
         renderList('upcoming-list', data.upcoming, false);
         document.getElementById('upcoming-count').innerText = data.upcoming.length;
     }
 
-    // ✅ 리스트 렌더링 헬퍼 함수
     function renderList(elementId, tasks, isToday) {
         const list = document.getElementById(elementId);
         list.innerHTML = '';
-
         if (tasks.length === 0) {
             list.innerHTML = '<div style="text-align:center; color:#9ca3af; padding:15px; font-size:0.9rem;">없음</div>';
             return;
@@ -222,11 +212,16 @@
             const div = document.createElement('div');
             div.className = `task-item ${task.completed ? 'completed' : ''}`;
 
+            // 태그 표시 로직
             let metaHtml = '';
             if (task.taskType === 'RECURRING') {
-                metaHtml = `<span class="tag">🔁 매일</span>`;
+                let ruleText = "반복";
+                if (task.recurrenceRule === 'DAILY') ruleText = "매일";
+                else if (task.recurrenceRule.startsWith('EVERY_N_DAYS')) ruleText = `${task.recurrenceRule.split(':')[1]}일 마다`;
+                else if (task.recurrenceRule.startsWith('MONTHLY')) ruleText = `매월 ${task.recurrenceRule.split(':')[1]}일`;
+
+                metaHtml = `<span class="tag recurring">🔄 ${ruleText}</span>`;
             } else {
-                // 날짜별 색상 처리
                 const dateClass = isToday ? 'tag d-day' : 'tag future';
                 const dateText = isToday ? '오늘 마감' : `${task.dueDate} 까지`;
                 metaHtml = `<span class="${dateClass}">${dateText}</span>`;
@@ -239,37 +234,47 @@
                 </div>
                 <div class="task-controls">
                     <button class="delete-btn" onclick="deleteTask(${task.id})">❌</button>
-
-                    ${isToday ? `
-                    <input type="checkbox" class="checkbox"
-                        ${task.completed ? 'checked' : ''}
-                        onchange="toggleTask(${task.id}, this.checked)">
-                    ` : ''}
+                    ${isToday ? `<input type="checkbox" class="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id}, this.checked)">` : ''}
                 </div>
             `;
             list.appendChild(div);
         });
     }
 
+    // ✅ [로직] 입력값 파싱하여 백엔드로 전송
     async function addTask() {
         const title = document.getElementById('task-title').value;
-        const type = document.getElementById('task-type').value;
-        const dateVal = document.getElementById('task-date').value;
+        const typeSelection = document.getElementById('recurrence-type').value;
+        const dateVal = document.getElementById('date-input').value;
+        const numberVal = document.getElementById('number-input').value;
 
         if (!title) return alert("내용을 입력하세요");
-        if (type === 'ONE_TIME' && !dateVal) return alert("날짜를 선택하세요");
 
-        const body = {
-            title: title,
-            taskType: type,
-            dueDate: type === 'ONE_TIME' ? dateVal : null,
-            recurrenceRule: type === 'RECURRING' ? 'DAILY' : null
-        };
+        let taskType = "ONE_TIME";
+        let dueDate = null;
+        let recurrenceRule = null;
+
+        if (typeSelection === 'ONE_TIME') {
+            if (!dateVal) return alert("날짜를 선택하세요");
+            taskType = "ONE_TIME";
+            dueDate = dateVal;
+        } else {
+            taskType = "RECURRING";
+            if (typeSelection === 'DAILY') {
+                recurrenceRule = "DAILY";
+            } else if (typeSelection === 'EVERY_N_DAYS') {
+                if (!numberVal) return alert("간격(일)을 입력하세요");
+                recurrenceRule = `EVERY_N_DAYS:${numberVal}`;
+            } else if (typeSelection === 'MONTHLY') {
+                if (!numberVal || numberVal < 1 || numberVal > 31) return alert("올바른 날짜(1~31)를 입력하세요");
+                recurrenceRule = `MONTHLY:${numberVal}`;
+            }
+        }
 
         const res = await fetch(TASK_API, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify(body)
+            body: JSON.stringify({ title, taskType, dueDate, recurrenceRule })
         });
 
         if (res.ok) {
@@ -282,19 +287,13 @@
 
     async function toggleTask(taskId, isChecked) {
         const method = isChecked ? 'POST' : 'DELETE';
-        await fetch(`${TASK_API}/${taskId}/complete`, {
-            method: method,
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await fetch(`${TASK_API}/${taskId}/complete`, { method, headers: { 'Authorization': `Bearer ${token}` } });
         loadTasks();
     }
 
     async function deleteTask(taskId) {
         if (!confirm("삭제하시겠습니까?")) return;
-        await fetch(`${TASK_API}/${taskId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        await fetch(`${TASK_API}/${taskId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         loadTasks();
     }
 </script>

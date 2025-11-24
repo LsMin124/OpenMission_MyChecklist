@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -67,15 +68,15 @@ public class TaskService {
                 LocalDate due = task.getDueDate();
                 boolean isCompletedToday = completedTaskIds.contains(task.getId());
 
-                // A. 마감일이 오늘이거나, 과거인데 아직 안 한 경우 -> 'Today' (잔소리 모드)
+                // A. 마감일이 오늘이거나, 과거인데 아직 안 한 경우 -> 'Today'
                 if ((due.isEqual(date) || due.isBefore(date)) && !isCompletedToday) {
                     todayList.add(TaskResponse.from(task, false));
                 }
-                // B. 마감일이 오늘인데 이미 완료한 경우 -> 'Today' (성취감용)
+                // B. 마감일이 오늘인데 이미 완료한 경우 -> 'Today'
                 else if (due.isEqual(date) && isCompletedToday) {
                     todayList.add(TaskResponse.from(task, true));
                 }
-                // C. 마감일이 미래인 경우 -> 'Upcoming' (미래 준비)
+                // C. 마감일이 미래인 경우 -> 'Upcoming'
                 else if (due.isAfter(date)) {
                     // 미래 일감은 완료 여부가 의미 없으므로 false, 날짜순 정렬을 위해 나중에 처리
                     upcomingList.add(TaskResponse.from(task, false));
@@ -94,22 +95,48 @@ public class TaskService {
     }
 
     // 해당 날짜에 해당 task의 노출여부 결정 로직
-    private boolean shouldShowTaskOnDate(Task task, LocalDate date, Set<Long> competedTaskIds) {
-
-        // task가 일회성인지 확인
+    private boolean shouldShowTaskOnDate(Task task, LocalDate date, Set<Long> completedTaskIds) {
         if (task.getTaskType() == TaskType.ONE_TIME) {
-            // 오늘이 듀인 경우 - 노출
-            if (task.getDueDate().isEqual(date)) {
-                return true;
-            }
-            // 마감일이 지났는데 1. 미완료인 경우 - 노출, 2. 완료된 경우 - 노출하지 않음
-            if (task.getDueDate().isBefore(date) && !competedTaskIds.contains(task.getId())) {
-                return true;
-            }
-            return false;
+            // 일회성 로직은 기존과 동일
+            if (task.getDueDate().isEqual(date)) return true;
+            return task.getDueDate().isBefore(date) && !completedTaskIds.contains(task.getId());
         } else {
-            // 일단 daily로 해놓고, 나머지 enum 등으로 추가?
-            return "DAILY".equals(task.getRecurrenceRule());
+            // recurring 확장
+            String rule = task.getRecurrenceRule();
+            if (rule == null) return false;
+
+            // 1. 매일 반복
+            if ("DAILY".equals(rule)) {
+                return true;
+            }
+
+            // 2. N일 마다 반복 (예: "EVERY_N_DAYS:3")
+            if (rule.startsWith("EVERY_N_DAYS:")) {
+                try {
+                    int n = Integer.parseInt(rule.split(":")[1]);
+                    // 기준일(생성일)과 조회 날짜의 차이를 구함
+                    LocalDate startDate = task.getCreatedAt().toLocalDate();
+                    long daysBetween = ChronoUnit.DAYS.between(startDate, date);
+
+                    // 과거 날짜는 안 보여줌 && N일 간격으로 딱 떨어지는 날인지 확인
+                    return daysBetween >= 0 && daysBetween % n == 0;
+                } catch (Exception e) {
+                    return false; // 파싱 에러 시 무시
+                }
+            }
+
+            // 3. 매월 반복 (예: "MONTHLY:25")
+            if (rule.startsWith("MONTHLY:")) {
+                try {
+                    int dayOfMonth = Integer.parseInt(rule.split(":")[1]);
+                    // 오늘이 그 날짜인지 확인
+                    return date.getDayOfMonth() == dayOfMonth;
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+
+            return false;
         }
     }
 
@@ -149,12 +176,8 @@ public class TaskService {
         }
 
         // 완료 기록을 찾아서 삭제
-        TaskCompletion completion = taskCompletionRepository.findByTaskAndCompletionDate(task, date)
-                .orElse(null); // 없으면 null
-
-        if (completion != null) {
-            taskCompletionRepository.delete(completion);
-        }
+        taskCompletionRepository.findByTaskAndCompletionDate(task, date)
+                .ifPresent(taskCompletionRepository::delete);
     }
 
     // task 삭제
