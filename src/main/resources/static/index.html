@@ -8,12 +8,32 @@
         .container { width: 400px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; }
         input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #5c67f2; color: white; border: none; cursor: pointer; font-weight: bold; }
+
+        /* 메인 버튼 스타일 */
+        button { background-color: #5c67f2; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
         button:hover { background-color: #4a54e1; }
-        .task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+
+        /* 로그아웃 버튼 (회색) */
+        .logout-btn { width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #888; margin-bottom: 0; }
+        .logout-btn:hover { background-color: #666; }
+
+        /* 할 일 아이템 스타일 */
+        .task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; transition: 0.2s; }
+        .task-item:hover { background-color: #fafafa; }
         .task-item.completed span { text-decoration: line-through; color: #888; }
+
+        /* 삭제 버튼 스타일 (빨간색 X) */
+        .delete-btn { width: auto; padding: 5px 8px; background-color: transparent; color: #ff4d4d; border: 1px solid transparent; margin-right: 5px; margin-bottom: 0; font-size: 0.9em; }
+        .delete-btn:hover { background-color: #fff0f0; border-color: #ffcccc; color: #ff0000; }
+
+        /* 체크박스 스타일 */
+        .checkbox { width: auto; margin: 0; cursor: pointer; accent-color: #5c67f2; transform: scale(1.2); }
+
         .hidden { display: none; }
         #error-msg { color: red; font-size: 0.9em; text-align: center; margin-bottom: 10px; }
+
+        /* 우측 컨트롤 영역 (삭제버튼 + 체크박스) */
+        .task-controls { display: flex; align-items: center; }
     </style>
 </head>
 <body>
@@ -28,18 +48,20 @@
 </div>
 
 <div class="container hidden" id="app-section">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h2>📝 오늘의 할 일</h2>
-        <button onclick="logout()" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #888;">로그아웃</button>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">📝 오늘의 할 일</h2>
+        <button onclick="logout()" class="logout-btn">로그아웃</button>
     </div>
 
     <div style="border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px;">
         <input type="text" id="task-title" placeholder="할 일을 입력하세요...">
-        <select id="task-type">
-            <option value="ONE_TIME">오늘 한 번만 (One Time)</option>
-            <option value="RECURRING">매일 반복 (Daily)</option>
-        </select>
-        <button onclick="addTask()">추가하기</button>
+        <div style="display: flex; gap: 5px;">
+            <select id="task-type" style="margin-bottom: 0;">
+                <option value="RECURRING">🔁 매일 반복 (Daily)</option>
+                <option value="ONE_TIME">📅 오늘 한 번만 (One Time)</option>
+            </select>
+            <button onclick="addTask()" style="width: 80px; margin-bottom: 0;">추가</button>
+        </div>
     </div>
 
     <div id="task-list">
@@ -47,10 +69,9 @@
 </div>
 
 <script>
-    const API_BASE = '/api';
+    const API_BASE = '/api'; // 로그인은 여전히 /api/auth 라고 가정
     let token = localStorage.getItem('accessToken');
 
-    // 페이지 로드 시 로그인 상태 체크
     if (token) {
         showApp();
     }
@@ -60,6 +81,7 @@
         const password = document.getElementById('password').value;
 
         try {
+            // 로그인은 기존 API 경로 유지
             const res = await fetch(`${API_BASE}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -89,27 +111,37 @@
     }
 
     async function loadTasks() {
+        // ✅ 수정: 경로를 todo/tasks/today 로 변경
         const res = await fetch(`todo/tasks/today`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-       if (res.status === 403) { logout(); return; } // 토큰 만료 시 로그아웃
+        if (res.status === 403 || res.status === 401) { logout(); return; }
 
         const tasks = await res.json();
         const list = document.getElementById('task-list');
         list.innerHTML = '';
 
+        if (tasks.length === 0) {
+            list.innerHTML = '<div style="text-align:center; color:#888; padding:20px;">할 일이 없습니다.</div>';
+            return;
+        }
+
         tasks.forEach(task => {
             const div = document.createElement('div');
             div.className = `task-item ${task.completed ? 'completed' : ''}`;
+
             div.innerHTML = `
                 <span>
                     ${task.recurrenceRule === 'DAILY' ? '🔁' : '📅'}
                     ${task.title}
                 </span>
-                <input type="checkbox"
-                    ${task.completed ? 'checked disabled' : ''}
-                    onchange="completeTask(${task.id})">
+                <div class="task-controls">
+                    <button class="delete-btn" onclick="deleteTask(${task.id})" title="삭제">❌</button>
+                    <input type="checkbox" class="checkbox"
+                        ${task.completed ? 'checked' : ''}
+                        onchange="toggleTask(${task.id}, this.checked)">
+                </div>
             `;
             list.appendChild(div);
         });
@@ -124,12 +156,12 @@
         const body = {
             title: title,
             taskType: type,
-            // ONE_TIME이면 오늘 날짜, RECURRING이면 DAILY 설정
             dueDate: type === 'ONE_TIME' ? new Date().toISOString().split('T')[0] : null,
             recurrenceRule: type === 'RECURRING' ? 'DAILY' : null
         };
 
-        await fetch(`todo/tasks`, {
+        // ✅ 수정: 경로를 todo/tasks 로 변경
+        const res = await fetch(`todo/tasks`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -138,22 +170,44 @@
             body: JSON.stringify(body)
         });
 
-        document.getElementById('task-title').value = '';
-        loadTasks();
+        if (res.ok) {
+            document.getElementById('task-title').value = '';
+            loadTasks();
+        } else {
+            alert("할 일 추가 실패!");
+        }
     }
 
-    async function completeTask(taskId) {
-        if (!confirm("완료 하시겠습니까?")) {
-            loadTasks(); // 취소 시 체크박스 원상복구
-            return;
-        }
+    async function toggleTask(taskId, isChecked) {
+        const method = isChecked ? 'POST' : 'DELETE';
 
-        await fetch(`todo/tasks/${taskId}/complete`, {
-            method: 'POST',
+        // ✅ 수정: 경로를 todo/tasks/... 로 변경
+        const res = await fetch(`todo/tasks/${taskId}/complete`, {
+            method: method,
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
+        if (!res.ok) {
+            alert("상태 변경 실패!");
+        }
+
         loadTasks();
+    }
+
+    async function deleteTask(taskId) {
+        if (!confirm("정말 삭제하시겠습니까?")) return;
+
+        // ✅ 수정: 경로를 todo/tasks/... 로 변경
+        const res = await fetch(`todo/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.ok) {
+            loadTasks();
+        } else {
+            alert("삭제 실패!");
+        }
     }
 </script>
 
