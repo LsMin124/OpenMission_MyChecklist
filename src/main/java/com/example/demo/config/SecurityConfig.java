@@ -30,7 +30,12 @@ public class SecurityConfig {
                 .requestMatchers(
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
-                        "/swagger-ui.html");
+                        "/swagger-ui.html") // swagger
+                .requestMatchers(
+                        "/favicon.ico",
+                        "/css/**",
+                        "/js/**",
+                        "/images/**"); // static 리소스
     }
 
     @Bean
@@ -41,6 +46,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/",
+                                "/index.html").permitAll() // 메인페이지 접근 허용
                         .requestMatchers(
                                 "/api/auth/**" // 로그인 및 회원가입 api 접근 허용
                         ).permitAll()

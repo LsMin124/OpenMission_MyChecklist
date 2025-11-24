@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Todo App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; padding-top: 50px; }
+        .container { width: 400px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        input, select, button { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #5c67f2; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #4a54e1; }
+        .task-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border-bottom: 1px solid #eee; }
+        .task-item.completed span { text-decoration: line-through; color: #888; }
+        .hidden { display: none; }
+        #error-msg { color: red; font-size: 0.9em; text-align: center; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="login-section">
+    <h2>🔐 로그인</h2>
+    <input type="email" id="email" placeholder="이메일 (예: newuser@test.com)" value="newuser@test.com">
+    <input type="password" id="password" placeholder="비밀번호" value="1234">
+    <div id="error-msg"></div>
+    <button onclick="login()">로그인</button>
+    <p style="text-align: center; font-size: 0.8em;">(회원가입은 Swagger에서 진행해주세요)</p>
+</div>
+
+<div class="container hidden" id="app-section">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>📝 오늘의 할 일</h2>
+        <button onclick="logout()" style="width: auto; padding: 5px 10px; font-size: 0.8em; background-color: #888;">로그아웃</button>
+    </div>
+
+    <div style="border-bottom: 2px solid #eee; margin-bottom: 20px; padding-bottom: 10px;">
+        <input type="text" id="task-title" placeholder="할 일을 입력하세요...">
+        <select id="task-type">
+            <option value="ONE_TIME">오늘 한 번만 (One Time)</option>
+            <option value="RECURRING">매일 반복 (Daily)</option>
+        </select>
+        <button onclick="addTask()">추가하기</button>
+    </div>
+
+    <div id="task-list">
+    </div>
+</div>
+
+<script>
+    const API_BASE = '/api';
+    let token = localStorage.getItem('accessToken');
+
+    // 페이지 로드 시 로그인 상태 체크
+    if (token) {
+        showApp();
+    }
+
+    async function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!res.ok) throw new Error('로그인 실패');
+
+            const data = await res.json();
+            token = data.accessToken;
+            localStorage.setItem('accessToken', token);
+            showApp();
+        } catch (e) {
+            document.getElementById('error-msg').innerText = "이메일 또는 비밀번호를 확인하세요.";
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('accessToken');
+        location.reload();
+    }
+
+    function showApp() {
+        document.getElementById('login-section').classList.add('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        loadTasks();
+    }
+
+    async function loadTasks() {
+        const res = await fetch(`${API_BASE}/tasks/today`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 403) { logout(); return; } // 토큰 만료 시 로그아웃
+
+        const tasks = await res.json();
+        const list = document.getElementById('task-list');
+        list.innerHTML = '';
+
+        tasks.forEach(task => {
+            const div = document.createElement('div');
+            div.className = `task-item ${task.completed ? 'completed' : ''}`;
+            div.innerHTML = `
+                <span>
+                    ${task.recurrenceRule === 'DAILY' ? '🔁' : '📅'}
+                    ${task.title}
+                </span>
+                <input type="checkbox"
+                    ${task.completed ? 'checked disabled' : ''}
+                    onchange="completeTask(${task.id})">
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    async function addTask() {
+        const title = document.getElementById('task-title').value;
+        const type = document.getElementById('task-type').value;
+
+        if (!title) return alert("할 일을 입력하세요!");
+
+        const body = {
+            title: title,
+            taskType: type,
+            // ONE_TIME이면 오늘 날짜, RECURRING이면 DAILY 설정
+            dueDate: type === 'ONE_TIME' ? new Date().toISOString().split('T')[0] : null,
+            recurrenceRule: type === 'RECURRING' ? 'DAILY' : null
+        };
+
+        await fetch(`${API_BASE}/tasks`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+        });
+
+        document.getElementById('task-title').value = '';
+        loadTasks();
+    }
+
+    async function completeTask(taskId) {
+        if (!confirm("완료 하시겠습니까?")) {
+            loadTasks(); // 취소 시 체크박스 원상복구
+            return;
+        }
+
+        await fetch(`${API_BASE}/tasks/${taskId}/complete`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        loadTasks();
+    }
+</script>
+
+</body>
+</html>
