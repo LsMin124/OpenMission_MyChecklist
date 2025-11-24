@@ -66,4 +66,29 @@ public class TaskController {
         return ResponseEntity.ok().build();
     }
 
+    // task 완료 취소
+    @DeleteMapping("/{taskId}/complete")
+    public ResponseEntity<Void> cancelTaskCompletion(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long taskId,
+            @RequestParam(required = false) LocalDate date) {
+
+        Long userId = Long.parseLong(userDetails.getUsername());
+        if (date == null) date = LocalDate.now();
+
+        taskService.cancelTaskCompletion(userId, taskId, date);
+        return ResponseEntity.ok().build();
+    }
+
+    // task 삭제
+    @DeleteMapping("/{taskId}")
+    public ResponseEntity<Void> deleteTask(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable Long taskId) {
+
+        Long userId = Long.parseLong(userDetails.getUsername());
+        taskService.deleteTask(userId, taskId);
+
+        return ResponseEntity.noContent().build();
+    }
 }

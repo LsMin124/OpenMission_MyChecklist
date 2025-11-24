@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface TaskCompletionRepository extends JpaRepository<TaskCompletion, Long> {
 
@@ -15,4 +16,10 @@ public interface TaskCompletionRepository extends JpaRepository<TaskCompletion, 
 
     // 특정 날짜의 사용자 완료 기록을 한번에 조회 (N+1 문제 방지)
     List<TaskCompletion> findByTaskUserAndCompletionDate(User user, LocalDate date);
+
+    // 특정 날짜 완료 기록 조회 -> 삭제용
+    Optional<TaskCompletion> findByTaskAndCompletionDate(Task task, LocalDate date);
+
+    // task 삭제 시 완료 기록도 함께 삭제
+    void deleteAllByTask(Task task);
 }

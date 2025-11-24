@@ -102,5 +102,43 @@ public class TaskService {
                 .build();
 
         taskCompletionRepository.save(completion);
+
+
+    }
+
+    // task 완료 취소
+    @Transactional
+    public void cancelTaskCompletion(Long userId, Long taskId, LocalDate date) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("작업을 찾을 수 없습니다."));
+
+        if (!task.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("권한이 없습니다.");
+        }
+
+        // 완료 기록을 찾아서 삭제
+        TaskCompletion completion = taskCompletionRepository.findByTaskAndCompletionDate(task, date)
+                .orElse(null); // 없으면 null
+
+        if (completion != null) {
+            taskCompletionRepository.delete(completion);
+        }
+    }
+
+    // task 삭제
+    @Transactional
+    public void deleteTask(Long userId, Long taskId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("작업을 찾을 수 없습니다."));
+
+        if (!task.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("권한이 없습니다.");
+        }
+
+        // 1. 연관된 완료 기록들 먼저 싹 삭제 (참조 무결성 유지)
+        taskCompletionRepository.deleteAllByTask(task);
+
+        // 2. 할 일(규칙) 삭제
+        taskRepository.delete(task);
     }
 }
