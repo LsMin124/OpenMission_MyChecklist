@@ -21,17 +21,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-        throws ServletException, IOException {
+            throws ServletException, IOException {
 
-        // request header에서 token 추출
-        String token = resolveToken(request);
+        try {
+            String token = resolveToken(request);
 
-        // 토큰 유효성 검사
-        if (token != null && jwtTokenProvider.validateToken(token)) {
-            // Authentication 객체 토큰에서 뽑아 SecurityContext에 저장
-            Authentication authentication = jwtTokenProvider.getAuthentication(token);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-            log.info("Authenticated Successfully for user {}", authentication.getName());
+            // 유효한 토큰이 있는 경우에만 인증 정보 저장
+            if (token != null && jwtTokenProvider.validateToken(token)) {
+                Authentication authentication = jwtTokenProvider.getAuthentication(token);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.debug("Security Context에 '{}' 인증 정보를 저장했습니다", authentication.getName());
+            }
+        } catch (Exception e) {
+            log.error("Security Filter에서 인증 처리 중 에러 발생: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);
@@ -40,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private String resolveToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // Bearer 이후 문자열만 자르기
+            return bearerToken.substring(7);
         }
         return null;
     }

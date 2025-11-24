@@ -11,6 +11,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -26,35 +27,27 @@ public class SecurityConfig {
 
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
+        // static 리소스, swagger만 무시 (필터 안 거침)
         return (web) -> web.ignoring()
                 .requestMatchers(
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html") // swagger
-                .requestMatchers(
-                        "/favicon.ico",
-                        "/css/**",
-                        "/js/**",
-                        "/images/**"); // static 리소스
+                        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
+                        "/favicon.ico", "/css/**", "/js/**", "/images/**"
+                );
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // csrf 비활성화
-                // JWT -> stateless이므로 세션 미사용
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/",
-                                "/testpage.html").permitAll() // 메인페이지 접근 허용
-                        .requestMatchers(
-                                "/api/auth/**" // 로그인 및 회원가입 api 접근 허용
-                        ).permitAll()
-
+                        // 1. 메인 화면, 로그인 관련은 통과
+                        .requestMatchers("/", "/testpage.html", "/api/auth/**").permitAll()
+                        // 2. 나머지는 인증 필요
                         .anyRequest().authenticated()
-                );
+                )
+                // 3. 필터 등록 (이게 있어야 로그가 뜸!)
+                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

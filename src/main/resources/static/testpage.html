@@ -89,11 +89,11 @@
     }
 
     async function loadTasks() {
-        const res = await fetch(`${API_BASE}/tasks/today`, {
+        const res = await fetch(`todo/tasks/today`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (res.status === 403) { logout(); return; } // 토큰 만료 시 로그아웃
+       if (res.status === 403) { logout(); return; } // 토큰 만료 시 로그아웃
 
         const tasks = await res.json();
         const list = document.getElementById('task-list');
@@ -129,7 +129,7 @@
             recurrenceRule: type === 'RECURRING' ? 'DAILY' : null
         };
 
-        await fetch(`${API_BASE}/tasks`, {
+        await fetch(`todo/tasks`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -148,7 +148,7 @@
             return;
         }
 
-        await fetch(`${API_BASE}/tasks/${taskId}/complete`, {
+        await fetch(`todo/tasks/${taskId}/complete`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
