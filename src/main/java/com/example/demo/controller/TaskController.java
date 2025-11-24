@@ -7,7 +7,6 @@ import com.example.demo.exception.SuccessCode;
 import com.example.demo.service.TaskService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,8 +28,7 @@ public class TaskController {
     public ResponseEntity<ApiResponse<Long>> createTask(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody @Valid TaskRequest request) {
-        Long userId = Long.parseLong(userDetails.getUsername());
-        Long taskId = taskService.createTask(userId, request);
+        Long taskId = taskService.createTask(getUserId(userDetails), request);
         return ApiResponse.success(SuccessCode.CREATE_SUCCESS, taskId);
     }
 
@@ -39,9 +37,7 @@ public class TaskController {
     public ResponseEntity<ApiResponse<Map<String, List<TaskResponse>>>> getTasksForToday(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(required = false) LocalDate date) {
-        Long userId = Long.parseLong(userDetails.getUsername());
-        if (date == null) date = LocalDate.now();
-        Map<String, List<TaskResponse>> schedule = taskService.getTaskSchedule(userId, date);
+        Map<String, List<TaskResponse>> schedule = taskService.getTaskSchedule(getUserId(userDetails), getDateOrDefault(date));
         return ApiResponse.success(SuccessCode.SELECT_SUCCESS, schedule);
     }
 
@@ -51,11 +47,7 @@ public class TaskController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long taskId,
             @RequestParam(required = false) LocalDate date) {
-        Long userId = Long.parseLong(userDetails.getUsername());
-        if (date == null) {
-            date = LocalDate.now();
-        }
-        taskService.completeTask(userId, taskId, date);
+        taskService.completeTask(getUserId(userDetails), taskId, getDateOrDefault(date));
         return ApiResponse.success(SuccessCode.UPDATE_SUCCESS);
     }
 
@@ -65,11 +57,7 @@ public class TaskController {
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long taskId,
             @RequestParam(required = false) LocalDate date) {
-
-        Long userId = Long.parseLong(userDetails.getUsername());
-        if (date == null) date = LocalDate.now();
-
-        taskService.cancelTaskCompletion(userId, taskId, date);
+        taskService.cancelTaskCompletion(getUserId(userDetails), taskId, getDateOrDefault(date));
         return ApiResponse.success(SuccessCode.UPDATE_SUCCESS);
     }
 
@@ -78,10 +66,16 @@ public class TaskController {
     public ResponseEntity<ApiResponse<Void>> deleteTask(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long taskId) {
-
-        Long userId = Long.parseLong(userDetails.getUsername());
-        taskService.deleteTask(userId, taskId);
-
+        taskService.deleteTask(getUserId(userDetails), taskId);
         return ApiResponse.success(SuccessCode.DELETE_SUCCESS);
+    }
+
+    // 중복 제거
+    private Long getUserId(UserDetails userDetails) {
+        return Long.parseLong(userDetails.getUsername());
+    }
+
+    private LocalDate getDateOrDefault(LocalDate date) {
+        return date == null ? LocalDate.now() : date;
     }
 }
